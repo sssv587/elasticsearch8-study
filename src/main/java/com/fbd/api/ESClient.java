@@ -71,7 +71,7 @@ public class ESClient {
         // 同步客户端对象，需要关闭
         ElasticsearchClient client = new ElasticsearchClient(transport);
 
-        // 异步客户端对象
+        // 异步客户端对象，需要回调方法得到结果
         ElasticsearchAsyncClient asyncClient = new ElasticsearchAsyncClient(transport);
 
         transport.close();

@@ -1,6 +1,7 @@
 package com.fbd.api;
 
 import co.elastic.clients.elasticsearch.*;
+import co.elastic.clients.elasticsearch.indices.*;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
@@ -26,8 +27,50 @@ import java.security.cert.*;
  * @Description 构建ES客户端
  */
 public class ESClient {
-    public static void main(String[] args) {
+    private static ElasticsearchClient client;
+    private static ElasticsearchAsyncClient asyncClient;
+    private static ElasticsearchTransport transport;
+    private static final String INDEX_FBD = "fbd";
+
+    public static void main(String[] args) throws Exception {
         // 初始化ES客户端
+        initESConnection();
+
+        // 操作索引
+        operationIndex();
+    }
+
+    private static void operationIndex() throws Exception {
+        // 获取索引客户端对象
+        ElasticsearchIndicesClient indices = client.indices();
+
+        // 判断索引是否存在
+        ExistsRequest existsRequest = new ExistsRequest.Builder().index(INDEX_FBD).build();
+        final boolean flg = indices.exists(existsRequest).value();
+        if (flg) {
+            System.out.println("索引" + INDEX_FBD + "已经存在");
+        } else {
+            // 创建索引
+            // 需要采用构建器方式来个构建对象，ESAPI的对象基本上都是采用这种方式
+            CreateIndexRequest request = new CreateIndexRequest.Builder()
+                    .index(INDEX_FBD).build();
+            final CreateIndexResponse createIndexResponse = indices.create(request);
+            System.out.println("创建索引的响应对象 =" + createIndexResponse);
+        }
+
+        // 查询索引
+        GetIndexRequest getIndexRequest = new GetIndexRequest.Builder().index(INDEX_FBD).build();
+        final GetIndexResponse getIndexResponse = indices.get(getIndexRequest);
+//        IndexState indexState = getIndexResponse.get("fbd");
+        System.out.println("查询的响应结果:" + getIndexResponse);
+
+        // 删除索引
+        DeleteIndexRequest deleteIndexRequest = new DeleteIndexRequest.Builder().index(INDEX_FBD).build();
+        final DeleteIndexResponse deleteIndexResponse = indices.delete(deleteIndexRequest);
+        System.out.println("索引删除成功:" + deleteIndexResponse);
+
+
+        transport.close();
     }
 
     private static void initESConnection() throws Exception {
@@ -65,14 +108,13 @@ public class ESClient {
 
         RestClient restClient = builder.build();
 
-        ElasticsearchTransport transport = new RestClientTransport(
-                restClient, new JacksonJsonpMapper());
+        transport = new RestClientTransport(restClient, new JacksonJsonpMapper());
 
         // 同步客户端对象，需要关闭
-        ElasticsearchClient client = new ElasticsearchClient(transport);
+        client = new ElasticsearchClient(transport);
 
         // 异步客户端对象，需要回调方法得到结果
-        ElasticsearchAsyncClient asyncClient = new ElasticsearchAsyncClient(transport);
+        asyncClient = new ElasticsearchAsyncClient(transport);
 
         transport.close();
     }

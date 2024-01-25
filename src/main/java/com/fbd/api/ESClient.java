@@ -1,10 +1,15 @@
 package com.fbd.api;
 
 import co.elastic.clients.elasticsearch.*;
+import co.elastic.clients.elasticsearch.core.*;
+import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
+import co.elastic.clients.elasticsearch.core.bulk.CreateOperation;
 import co.elastic.clients.elasticsearch.indices.*;
+import co.elastic.clients.elasticsearch.indices.ExistsRequest;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
+import com.fbd.User;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.*;
 import org.apache.http.client.*;
@@ -19,6 +24,8 @@ import java.io.InputStream;
 import java.nio.file.*;
 import java.security.KeyStore;
 import java.security.cert.*;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * @author yuhang.sun
@@ -38,8 +45,53 @@ public class ESClient {
 
         // 操作索引
         operationIndex();
-
         operationIndexLambda();
+
+        // 操作文档
+        operationDocument();
+    }
+
+    private static void operationDocument() throws Exception {
+        User user = new User();
+        user.setId(1001);
+        user.setName("zhangsan");
+        user.setAge(30);
+
+        CreateRequest<User> createRequest = new CreateRequest.Builder<User>()
+                .index(INDEX_FBD)
+                .id("1001")
+                .document(user)
+                .build();
+
+        // 增加文档
+        CreateResponse createResponse = client.create(createRequest);
+        System.out.println("文档创建的响应对象:" + createResponse);
+
+        // 批量添加数据
+        List<BulkOperation> opts = new ArrayList<>();
+        for (int i = 1; i <= 5; i++) {
+            CreateOperation<User> optObj = new CreateOperation.Builder<User>()
+                    .index(INDEX_FBD)
+                    .id("200" + i)
+                    .document(new User(2000 + i, "zhangsan" + i, 30 + i))
+                    .build();
+            BulkOperation opt = new BulkOperation.Builder().create(optObj).build();
+            opts.add(opt);
+        }
+
+        BulkRequest bulkRequest = new BulkRequest.Builder().operations(opts).build();
+        final BulkResponse bulk = client.bulk(bulkRequest);
+        System.out.println("批量新增数据的响应:" + bulk);
+
+        // 文档的删除
+        DeleteRequest deleteRequest = new DeleteRequest.Builder()
+                .index(INDEX_FBD)
+                .id("2001")
+                .build();
+        final DeleteResponse deleteResponse = client.delete(deleteRequest);
+        System.out.println(deleteResponse);
+
+        transport.close();
     }
 
     private static void operationIndexLambda() throws Exception {

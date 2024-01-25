@@ -38,6 +38,28 @@ public class ESClient {
 
         // 操作索引
         operationIndex();
+
+        operationIndexLambda();
+    }
+
+    private static void operationIndexLambda() throws Exception {
+        // 获取索引客户端对象
+        ElasticsearchIndicesClient indices = client.indices();
+
+        boolean flg = indices.exists(req -> req.index(INDEX_FBD)).value();
+
+        if (flg) {
+            System.out.println("索引" + INDEX_FBD + "已经存在");
+        } else {
+            CreateIndexResponse createIndexResponse = indices.create(req -> req.index(INDEX_FBD));
+            System.out.println("创建索引的响应对象 =" + createIndexResponse);
+        }
+
+        IndexState fbd = indices.get(req -> req.index(INDEX_FBD)).get("fbd");
+
+        System.out.println(indices.delete(req -> req.index(INDEX_FBD)).acknowledged());
+
+        transport.close();
     }
 
     private static void operationIndex() throws Exception {

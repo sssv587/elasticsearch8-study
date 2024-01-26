@@ -1,6 +1,8 @@
 package com.fbd.api;
 
 import co.elastic.clients.elasticsearch.*;
+import co.elastic.clients.elasticsearch._types.query_dsl.MatchQuery;
+import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch.core.*;
 import co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import co.elastic.clients.elasticsearch.core.bulk.CreateOperation;
@@ -27,7 +29,6 @@ import java.security.KeyStore;
 import java.security.cert.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 
 /**
  * @author yuhang.sun
@@ -52,7 +53,59 @@ public class ESClient {
         // 操作文档
         operationDocument();
         operationDocumentLambda();
+
+        // 查询文档
+        queryDocument();
+        queryDocumentLambda();
+
+        // 异步操作
+        asyncClientOperation();
     }
+
+    private static void asyncClientOperation() throws Exception {
+        asyncClient.indices().create(
+                req -> req.index("newIndex")
+        ).thenApply(
+                resp -> resp.acknowledged()
+        ).whenCompleteAsync(
+                (resp, error) -> {
+                    System.out.println("回调方法");
+                    if (resp != null) {
+                        System.out.println(resp);
+                    } else {
+                        error.printStackTrace();
+                    }
+                }
+        );
+
+        System.out.println("主线程代码...");
+    }
+
+    private static void queryDocumentLambda() throws Exception {
+        client.search(req -> {
+            req.query(
+                    q -> q.match(
+                            m -> m.field("name").query("zhangsan")
+                    )
+            );
+            return req;
+        }, Object.class);
+
+        transport.close();
+    }
+
+    private static void queryDocument() throws Exception {
+        MatchQuery matchQuery = new MatchQuery.Builder().field("age").query(30).build();
+
+        Query query = new Query.Builder().match(matchQuery).build();
+
+        SearchRequest searchRequest = new SearchRequest.Builder().query(query).build();
+
+        client.search(searchRequest, Object.class);
+
+        transport.close();
+    }
+
 
     private static void operationDocumentLambda() throws Exception {
         User user = new User();

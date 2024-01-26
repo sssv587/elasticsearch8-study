@@ -9,6 +9,7 @@ import co.elastic.clients.elasticsearch.indices.ExistsRequest;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
+import co.elastic.clients.util.ObjectBuilder;
 import com.fbd.User;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.*;
@@ -26,6 +27,7 @@ import java.security.KeyStore;
 import java.security.cert.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * @author yuhang.sun
@@ -49,6 +51,46 @@ public class ESClient {
 
         // 操作文档
         operationDocument();
+        operationDocumentLambda();
+    }
+
+    private static void operationDocumentLambda() throws Exception {
+        User user = new User();
+        user.setId(1001);
+        user.setName("zhangsan");
+        user.setAge(30);
+
+        System.out.println(client.create(
+                req -> req.index(INDEX_FBD)
+                        .id("1001")
+                        .document(new User(1001, "zhangsan", 30))
+        ).result());
+
+        List<User> users = new ArrayList<>();
+        for (int i = 1; i <= 5; i++) {
+            users.add(new User(3000 + i, "lisi" + i, 30 + i));
+        }
+
+        // 批量添加数据
+        client.bulk(
+                req -> {
+                    users.forEach(
+                            u -> req.operations(
+                                    b -> b.create(
+                                            d -> d.index(INDEX_FBD).id(u.getId().toString()).document(u)
+                                    )
+                            )
+                    );
+                    return req;
+                }
+        );
+
+        // 文档的删除
+        client.delete(
+                req -> req.index(INDEX_FBD).id("3001")
+        );
+
+        transport.close();
     }
 
     private static void operationDocument() throws Exception {
